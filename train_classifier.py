@@ -27,4 +27,7 @@ if __name__ == '__main__':
                                 random_state=1)
     rf.fit(X_trn, y_trn)
     y_hat = rf.predict_proba(X_val)
+
+    print(y_hat.shape, y_val.shape)
+    print(X.trn.shape, X_val.shape)
     print("AND EVAL", f1_score(y_val, y_hat), average='weighted')

@@ -1,5 +1,6 @@
 import os
-import gdal
+#import gdal
+import numpy as np
 import imageio
 from time import time
 from collections import Counter

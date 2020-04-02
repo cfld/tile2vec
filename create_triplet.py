@@ -1,39 +1,12 @@
 import os
+import argparse
 import numpy as np
 import pandas as pd
 from glob import glob
 from tqdm import tqdm
 from joblib import Parallel, delayed
-import json
-from skimage import io
-from skimage.transform import rescale
 
-## Generate mosaic functions
-def load_meta(patch_dir):
-    patch_name = os.path.basename(patch_dir)
-    meta_path = os.path.join(patch_dir, patch_name + '_labels_metadata.json')
-
-    meta = json.load(open(meta_path))
-    del meta['projection']
-    del meta['coordinates']
-    meta.update({
-        "patch_name": patch_name,
-        "patch_dir": patch_dir,
-        "row": int(patch_name.split('_')[-1]),
-        "col": int(patch_name.split('_')[-2])
-    })
-
-    return meta
-
-def resize_bands(img, size=120):
-    return np.array(rescale(img, size/img.shape[0], anti_aliasing=False))
-
-def load_patch(patch_dir):
-    bands = ['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B8A', 'B09', 'B11', 'B12']
-    patch_name = os.path.basename(patch_dir)
-    patch = [io.imread(os.path.join(patch_dir, f'{patch_name}_{band}.tif')) for band in bands]
-    patch = np.stack([resize_bands(xx) for xx in patch], axis=2)
-    return patch
+from helpers import load_meta, resize_bands, load_patch
 
 def get_mosaic(sub):
     px = 120
@@ -95,19 +68,24 @@ def save_img(mosaic, idx, row, im_size, save_dir):
     np.save(os.path.join(save_dir, str(idx) + 'distant.npy'), d)
 
 
+
 if __name__ == '__main__':
 
-    _ = np.random.seed(3)
-    im_size = 50
-    neighborhood = 100
-    n_samples = 20000
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--in_dir', default='', type=str, help='Path to bigearthnet')
+    parser.add_argument('--save_dir', default='', type=str, help='Path to save triplets')
+    parser.add_argument('--im_size', default=50, type=int, help='size of triplet image')
+    parser.add_argument('--neighborhood', default=100, type=int, help='size of neighborhood for tile2vec')
+    parser.add_argument('--n_samples', default=20000, type=int, help='number of samples per mosaic')
+    parser.add_argument('--n_mosaic', default=5, type=int)
+    parser.add_argument('--seed', default=3, type=int)
+    config = parser.parse_args()
+    _ = np.random.seed(config.seed)
 
-    in_dir = '/raid/users/bjohnson/data/bigearthnet/bigearthnet/'
-    save_dir = '/raid/users/ebarnett/bigearthnet_triplet/'
-    os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(config.save_dir, exist_ok=True)
 
     # Get patch info
-    patch_dirs = glob(os.path.join(in_dir, '*'))
+    patch_dirs = glob(os.path.join(config.in_dir, '*'))
     metas = pd.DataFrame([load_meta(patch_dir) for patch_dir in tqdm(patch_dirs)])
 
     # Construct mosaic
@@ -115,7 +93,7 @@ if __name__ == '__main__':
     tile_sources = tile_sources[tile_sources > 1000] # Skip tiles w/o make patches
 
     idx = 0
-    for t in range(5):
+    for t in range(config.n_mosaic):
         ts     = tile_sources.index[t]
         meta1  = metas[metas.tile_source == ts]
         meta1  = meta1.sort_values(by=['row', 'col']).reset_index(drop=True)
@@ -123,16 +101,15 @@ if __name__ == '__main__':
 
         # Get centroids
         df_mosaic = get_centroids(mosaic        = mosaic,
-                                  n_samples     = n_samples,
-                                  neighborhood  = neighborhood,
-                                  im_size       = im_size)
+                                  n_samples     = config.n_samples,
+                                  neighborhood  = config.neighborhood,
+                                  im_size       = config.im_size)
 
         # Pull / Save tiles
-        jobs = [delayed(save_img)(mosaic, i+idx, row, im_size, save_dir) for i, row in df_mosaic.iterrows()]
+        jobs = [delayed(save_img)(mosaic, i+idx, row, config.im_size, config.save_dir) for i, row in df_mosaic.iterrows()]
         print("STARTING PARALLEL")
         _ = Parallel(n_jobs=60, backend='multiprocessing', verbose=10)(jobs)
-
-        idx += len(meta1)
+        idx += len(df_mosaic)
 
 
 

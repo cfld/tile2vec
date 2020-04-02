@@ -115,7 +115,7 @@ if __name__ == '__main__':
     X = np.stack(X, axis=0)
     y = np.stack(y, axis=0)
     model_name = os.path.basename(config.model_dir)
-
+    if not os.path.isdir(config.feats_dir): os.mkdir(config.feats_dir)
     # Save Features
     np.save(os.path.join(config.feats_dir, f'X_{model_name}.npy'), X)
     np.save(os.path.join(config.feats_dir, f'y_{model_name}.npy'), y)

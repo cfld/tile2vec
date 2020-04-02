@@ -101,18 +101,18 @@ if __name__ == '__main__':
     # Iterate and produce embeddings
     t0 = time()
     y = []
-    X = np.zeros((config.n_tiles, config.z_dim))
+    X = []
     for idx, (tile, lab) in enumerate(dataloader):
-        #tile = torch.from_numpy(tile).float()
-        tile = torch.squeeze(tile)
+        tile = torch.squeeze(tile.float())
         tile = Variable(tile)
         if cuda: tile = tile.cuda()
         z = tilenet.encode(tile)
         if cuda: z = z.cpu()
         z = z.data.numpy()
-        X[idx,:] = z
+        X.append(z)
         y.append(lab)
     t1 = time()
+    X = np.stack(X, axis=0)
     y = np.stack(y, axis=0)
     model_name = os.path.basename(config.model_dir)
 

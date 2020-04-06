@@ -5,7 +5,8 @@ import pandas as pd
 from glob import glob
 from tqdm import tqdm
 from joblib import Parallel, delayed
-
+import warnings
+warnings.filterwarnings('ignore')
 from helpers import load_meta, resize_bands, load_patch
 
 def get_mosaic(sub):
@@ -93,10 +94,12 @@ if __name__ == '__main__':
     tile_sources = tile_sources[tile_sources > 1000] # Skip tiles w/o make patches
 
     idx = 0
-    for t in range(config.n_mosaic):
+    print("Getting triplet")
+    for t in tqdm(np.arange(0,config.n_mosaic)):
         ts     = tile_sources.index[t]
         meta1  = metas[metas.tile_source == ts]
         meta1  = meta1.sort_values(by=['row', 'col']).reset_index(drop=True)
+
         mosaic = get_mosaic(meta1)
 
         # Get centroids
@@ -108,7 +111,7 @@ if __name__ == '__main__':
         # Pull / Save tiles
         jobs = [delayed(save_img)(mosaic, i+idx, row, config.im_size, config.save_dir) for i, row in df_mosaic.iterrows()]
         print("STARTING PARALLEL")
-        _ = Parallel(n_jobs=60, backend='multiprocessing', verbose=10)(jobs)
+        _ = Parallel(n_jobs=60, backend='multiprocessing', verbose=0)(jobs)
         idx += len(df_mosaic)
 
 

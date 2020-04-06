@@ -77,7 +77,6 @@ class TileNet(nn.Module):
     def triplet_loss(self, z_p, z_n, z_d, margin=0.1, l2=0):
         l_n = torch.sqrt(((z_p - z_n) ** 2).sum(dim=1))
         l_d = - torch.sqrt(((z_p - z_d) ** 2).sum(dim=1))
-        l_nd = l_n + l_d
         loss = F.relu(l_n + l_d + margin)
         l_n = torch.mean(l_n)
         l_d = torch.mean(l_d)

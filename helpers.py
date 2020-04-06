@@ -28,3 +28,4 @@ def load_patch(patch_dir):
     patch = [io.imread(os.path.join(patch_dir, f'{patch_name}_{band}.tif')) for band in bands]
     patch = np.stack([resize_bands(xx) for xx in patch], axis=2)
     return patch
+

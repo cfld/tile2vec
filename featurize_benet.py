@@ -90,13 +90,16 @@ if __name__ == '__main__':
 
     # Get tile metadata
     tile_dirs = glob(os.path.join(config.tile_dir, '*'))
-    metas = pd.DataFrame([load_meta(t) for t in tqdm(tile_dirs)])[0:config.n_tiles]
+    metas = pd.DataFrame([load_meta(t) for t in tqdm(tile_dirs)])#[0:config.n_tiles]
     if config.shuffle == True:
         metas = metas.sample(frac=1)
 
     # Initialized DataLoader
     dataset = BigEarthNetDL(metas, config.labels_dir)
-    dataloader = DataLoader(dataset, batch_size = config.batch_size, shuffle=True, num_workers=4)
+    dataloader = DataLoader(dataset,
+                            batch_size = config.batch_size,
+                            shuffle=True,
+                            num_workers=4)
 
     # Iterate and produce embeddings
     t0 = time()

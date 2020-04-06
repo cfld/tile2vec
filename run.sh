@@ -16,28 +16,35 @@ conda init tile2vec_env
 #pip install tqdm
 #pip install pandas
 
-
 # Generate triplets
-#python create_triplet.py  --in_dir '/raid/users/bjohnson/data/bigearthnet/bigearthnet/' \
-#                          --save_dir '/raid/users/ebarnett/bigearthnet_triplet/'        \
-#                          --im_size 50 --neighborhood 100 --n_samples 20000 --n_mosaic 5
+python create_triplet.py  --in_dir "/raid/users/bjohnson/data/bigearthnet/bigearthnet/" \
+                          --save_dir "/raid/users/ebarnett/bigearthnet_triplet/"        \
+                          --im_size 50 --neighborhood 100 --n_samples 2000 --n_mosaic 150
 
-# Train tile2vec
-#python train_benet.py     --tile_dir '/raid/users/ebarnett/bigearthnet_triplet/' \
-#                          --model_dir '/raid/users/ebarnett/tile2vec/models/' \
-#                          --batch_size 10 --n_triplets 20000 --z_dim 512 --epochs 5 --lr 0.01 --margin 10 --l2 0.01
+for EPOCH in 5 10 20 50
+do
 
-## Get labels
-#python prep_labels.py
+    # Train tile2vec
+    python train_benet.py     --tile_dir "/raid/users/ebarnett/bigearthnet_triplet/" \
+                              --model_dir "/raid/users/ebarnett/tile2vec/models/" \
+                              --batch_size 32 --n_triplets 200000 --z_dim 512 --epochs $EPOCH --lr 0.01 --margin 10 --l2 0.01
 
-# Generate Features
-python featurize_benet.py --tile_dir '/raid/users/bjohnson/data/bigearthnet/bigearthnet/' \
-                          --labels_dir '/raid/users/ebarnett/bigearthnet/labels_ben_19.pkl' \
-                          --model_dir '/raid/users/ebarnett/tile2vec/models/TileNet_epoch5.ckpt' \
-                          --feats_dir '/raid/users/ebarnett/bigearthnet/features/' \
-                          --batch_size 16
-# Train / Eval Classifier
-python train_classifier.py --feats_dir '/raid/users/ebarnett/bigearthnet/features/' \
-                           --feats_model 'TileNet_epoch5.ckpt'
+    # Generate Features
+    python featurize_benet.py --tile_dir "/raid/users/bjohnson/data/bigearthnet/bigearthnet/" \
+                              --labels_dir "/raid/users/ebarnett/bigearthnet/labels_ben_19.pkl" \
+                              --model_dir "/raid/users/ebarnett/tile2vec/models/TileNet_epoch${EPOCH}.ckpt" \
+                              --feats_dir "/raid/users/ebarnett/bigearthnet/features/" \
+                              --batch_size 32
+done
+
+# Get labels
+python prep_labels.py
+
+for EPOCH in 5 10 20 50
+do
+    # Train / Eval Classifier
+    python train_classifier.py --feats_dir "/raid/users/ebarnett/bigearthnet/features/" \
+                               --feats_model "TileNet_epoch${EPOCH}.ckpt"
 
 
+done

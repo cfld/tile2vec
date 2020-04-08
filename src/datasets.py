@@ -9,8 +9,7 @@ from src.data_utils import clip_and_scale_image
 
 class TileTripletsDataset(Dataset):
 
-    def __init__(self, tile_dir, transform=None, n_triplets=None,
-        pairs_only=True):
+    def __init__(self, tile_dir, transform=None, n_triplets=None, pairs_only=True):
         self.tile_dir = tile_dir
         self.tile_files = glob.glob(os.path.join(self.tile_dir, '*'))
         self.transform = transform
@@ -19,7 +18,7 @@ class TileTripletsDataset(Dataset):
 
     def __len__(self):
         if self.n_triplets: return self.n_triplets
-        else: return len(self.tile_files) // 3
+        else: return len(self.tile_files)
 
     def __getitem__(self, idx):
         a = np.load(os.path.join(self.tile_dir, '{}anchor.npy'.format(idx)))
@@ -41,7 +40,6 @@ class TileTripletsDataset(Dataset):
 
 
 ### TRANSFORMS ###
-
 class GetBands(object):
     """
     Gets the first X bands of the tile triplet.
@@ -111,8 +109,6 @@ class ToFloatTensor(object):
         return sample
 
 ### TRANSFORMS ###
-
-
 def triplet_dataloader(img_type, tile_dir, bands=4, augment=True, batch_size=4, shuffle=True, num_workers=4,
                        n_triplets=None, pairs_only=True):
     """

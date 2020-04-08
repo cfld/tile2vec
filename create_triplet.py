@@ -9,19 +9,76 @@ import warnings
 warnings.filterwarnings('ignore')
 from helpers import load_meta, resize_bands, load_patch
 
+from collections import namedtuple
+
+Info = namedtuple('Info', 'start height')
+
+# returns height, width, and position of the top left corner of the largest
+#  rectangle with the given value in mat
+def max_size(mat, value=0):
+    it = iter(mat)
+    hist = [(el==value) for el in next(it, [])]
+    max_size_start, start_row = max_rectangle_size(hist), 0
+    for i, row in enumerate(it):
+        hist = [(1+h) if el == value else 0 for h, el in zip(hist, row)]
+        mss = max_rectangle_size(hist)
+        if area(mss) > area(max_size_start):
+            max_size_start, start_row = mss, i+2-mss[0]
+    return max_size_start[:2], (start_row, max_size_start[2])
+
+# returns height, width, and start column of the largest rectangle that
+#  fits entirely under the histogram
+def max_rectangle_size(histogram):
+    stack = []
+    top = lambda: stack[-1]
+    max_size_start = (0, 0, 0) # height, width, start of the largest rectangle
+    pos = 0 # current position in the histogram
+    for pos, height in enumerate(histogram):
+        start = pos # position where rectangle starts
+        while True:
+            if not stack or height > top().height:
+                stack.append(Info(start, height)) # push
+            elif stack and height < top().height:
+                max_size_start = max(
+                    max_size_start,
+                    (top().height, pos - top().start, top().start),
+                    key=area)
+                start, _ = stack.pop()
+                continue
+            break # height == top().height goes here
+
+    pos += 1
+    for start, height in stack:
+        max_size_start = max(max_size_start, (height, pos - start, start),
+            key=area)
+
+    return max_size_start
+
+def area(size): return size[0]*size[1]
+
 def get_mosaic(sub):
     px = 120
-    tile_source = sub.tile_source.iloc[0]
-    sub    = sub.sort_values(['row', 'col']).reset_index(drop=True)
+    sub_ = sub.sort_values(['row','col']).reset_index(drop=True)
+    xy = sub_[['row', 'col']].to_numpy()
     nrow   = sub.row.max() + 1
     ncol   = sub.col.max() + 1
-    mosaic = np.zeros((px * nrow, px * ncol, 12), dtype=np.float)
+
+    mat = np.ones((nrow, ncol), dtype=int)
+    for i in range(xy.shape[0]):
+        mat[xy[i,0], xy[i,1]] = 0
+    s, o = max_size(mat, value=0)
+    print("largest tile section is", s, "with origin", o)
+    list1 = np.arange(s[0]).tolist()
+    list2 = np.arange(s[1]).tolist()
+    tile_idx = [(x+o[0],y+o[1]) for x in list1 for y in list2]
+    mosaic = np.zeros((px * (max(list1)+1), px * (max(list2)+1), 12), dtype=np.float)
     for i, row in sub.iterrows():
-        start_row = px * row.row
-        end_row   = px * row.row + px
-        start_col = px * row.col
-        end_col   = px * row.col + px
-        mosaic[start_row:end_row, start_col:end_col, :] = load_patch(row.patch_dir)
+        if (row.row, row.col) in tile_idx:
+            start_row = px * (row.row - o[0])
+            end_row   = px * (row.row - o[0]) + px
+            start_col = px * (row.col - o[1])
+            end_col   = px * (row.col - o[1]) + px
+            mosaic[start_row:end_row, start_col:end_col, :] = load_patch(row.patch_dir)
 
     return mosaic
 
@@ -31,10 +88,8 @@ def get_centroids(mosaic, n_samples, neighborhood, im_size):
     pad = int(np.ceil(im_size/2) + neighborhood + np.ceil(im_size/2))
     w, h, c = mosaic.shape # c x w x h
 
-    # get anchors
-    x_an = np.random.randint(low=pad, high=w-pad, size=n_samples)
-    y_an = np.random.randint(low=pad, high=h-pad, size=n_samples)
-
+    x_an = np.random.randint(low=pad, high=w - pad, size=n_samples)
+    y_an = np.random.randint(low=pad, high=h - pad, size=n_samples)
     # get neighbors
     x_nb = x_an + np.random.randint(low=-np.floor(neighborhood / 2), high=np.floor(neighborhood / 2), size=n_samples)
     y_nb = y_an + np.random.randint(low=-np.floor(neighborhood / 2), high=np.floor(neighborhood / 2), size=n_samples)
@@ -55,11 +110,13 @@ def get_centroids(mosaic, n_samples, neighborhood, im_size):
 
     return df
 
+
 def get_subimg(mosaic, x, y, im_size):
     s = int(np.floor(im_size/2))
     return(mosaic[x-s:x+s, y-s:y+s, :])
 
 def save_img(mosaic, idx, row, im_size, save_dir):
+
     a = get_subimg(mosaic, row.x_an, row.y_an, im_size)
     n = get_subimg(mosaic, row.x_nb, row.y_nb, im_size)
     d = get_subimg(mosaic, row.x_nb, row.y_nb, im_size)
@@ -87,6 +144,7 @@ if __name__ == '__main__':
 
     # Get patch info
     patch_dirs = glob(os.path.join(config.in_dir, '*'))
+    print("getting metas")
     metas = pd.DataFrame([load_meta(patch_dir) for patch_dir in tqdm(patch_dirs)])
 
     # Construct mosaic
@@ -95,7 +153,8 @@ if __name__ == '__main__':
 
     idx = 0
     print("Getting triplet")
-    for t in tqdm(np.arange(0,config.n_mosaic)):
+    #for t in tqdm(np.arange(0, config.n_mosaic)):
+    for t in tqdm(range(len(tile_sources))):
         ts     = tile_sources.index[t]
         meta1  = metas[metas.tile_source == ts]
         meta1  = meta1.sort_values(by=['row', 'col']).reset_index(drop=True)
@@ -110,10 +169,8 @@ if __name__ == '__main__':
 
         # Pull / Save tiles
         jobs = [delayed(save_img)(mosaic, i+idx, row, config.im_size, config.save_dir) for i, row in df_mosaic.iterrows()]
-        print("STARTING PARALLEL")
         _ = Parallel(n_jobs=60, backend='multiprocessing', verbose=0)(jobs)
         idx += len(df_mosaic)
-
 
 
 

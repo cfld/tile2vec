@@ -57,7 +57,7 @@ class BigEarthNetDL(Dataset):
         # tile = tile[x_idx:x_idx+50,y_idx:y_idx+50,:]
         tile = tile[35:85,35:85,:]
         # Scale
-        tile = tile.clip_and_scale_image(tile,img_type='landsat')
+        tile = clip_and_scale_image(tile,img_type='landsat')
 
         # Rearrange to PyTorch order
         tile = np.moveaxis(tile, -1, 0)

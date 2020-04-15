@@ -12,10 +12,10 @@ python tile2vec_featurize.py \
     --label-channel 4                                                \
     --outdir        data/naip/feats/states/nc > data/naip/feats/states/meta_nc.jl
 
-# --
-# Downstream models
+# # --
+# # Downstream models # see moco repo
 
-python downstream.py \
-    --meta-path  data/naip/feats/states/meta_ca.jl \
-    --feat-path  data/naip/feats/states/ca         \
-    --n-train    1000
+# python downstream.py \
+#     --meta-path  data/naip/feats/states/meta_ca.jl \
+#     --feat-path  data/naip/feats/states/ca         \
+#     --n-train    1000

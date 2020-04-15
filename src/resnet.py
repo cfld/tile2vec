@@ -27,9 +27,9 @@ class BasicBlock(nn.Module):
             self.activation_fn = F.leaky_relu
 
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1   = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2   = nn.BatchNorm2d(planes)
 
         # no_relu layer
         self.conv3 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=True)
@@ -89,6 +89,7 @@ class ResNet(nn.Module):
     def __init__(self, block, num_blocks, n_classes=10, in_channels=4,
         z_dim=512, supervised=False, no_relu=False, loss_type='triplet',
         tile_size=50, activation='relu'):
+        
         super(ResNet, self).__init__()
         self.in_planes = 64
         self.in_channels = in_channels
@@ -128,17 +129,12 @@ class ResNet(nn.Module):
     def encode(self, x, verbose=False):
         # x = F.relu(self.bn1(self.conv1(x)))
         x = self.activation_fn(self.bn1(self.conv1(x)))
-        if verbose: print(x.shape)
         x = self.layer1(x)
-        if verbose: print(x.shape)
         x = self.layer2(x)
-        if verbose: print(x.shape)
         x = self.layer3(x)
-        if verbose: print(x.shape)
         x = self.layer4(x)
-        if verbose: print(x.shape)
         x = self.layer5(x)
-        if verbose: print(x.shape)
+        
         if self.tile_size == 50:
             x = F.avg_pool2d(x, 4)
         elif self.tile_size == 25:
@@ -147,10 +143,11 @@ class ResNet(nn.Module):
             x = F.avg_pool2d(x, 5)
         elif self.tile_size == 100:
             x = F.avg_pool2d(x, 7)
-        if verbose: print('Pooling:', x.shape)
-        z = x.view(x.size(0), -1)
-        if verbose: print('View:', z.shape)
-        return z
+        else:
+            x = x.mean(dim=(2, 3))
+        
+        x = x.view(x.size(0), -1)
+        return x
 
     def forward(self, x):
         if self.supervised:
@@ -186,6 +183,7 @@ class ResNet(nn.Module):
 
 def ResNet18(n_classes=10, in_channels=4, z_dim=512, supervised=False,
     no_relu=False, loss_type='triplet', tile_size=50, activation='relu'):
+    
     return ResNet(BasicBlock, [2,2,2,2,2], n_classes=n_classes,
         in_channels=in_channels, z_dim=z_dim, supervised=supervised,
         no_relu=no_relu, loss_type=loss_type, tile_size=tile_size, 

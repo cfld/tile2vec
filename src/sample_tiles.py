@@ -34,6 +34,7 @@ def get_triplet_imgs(img_dir, img_ext='.tif', n_triplets=1000):
 
 def get_triplet_tiles(tile_dir, img_dir, img_triplets, tile_size=50, neighborhood=100, 
                       val_type='uint8', bands_only=False, save=True, verbose=False):
+
     if not os.path.exists(tile_dir):
         os.makedirs(tile_dir)
     size_even = (tile_size % 2 == 0)
@@ -48,10 +49,11 @@ def get_triplet_tiles(tile_dir, img_dir, img_triplets, tile_size=50, neighborhoo
         if img_name[-3:] == 'npy':
             img = np.load(img_name)
         else:
-            img = load_img(os.path.join(img_dir, img_name), val_type=val_type, 
-                       bands_only=bands_only)
-        img_padded = np.pad(img, pad_width=[(tile_radius, tile_radius),
-                                            (tile_radius, tile_radius), (0,0)],
+            img = load_img(os.path.join(img_dir, img_name), val_type=val_type, bands_only=bands_only)
+        img_padded = np.pad(img,
+                            pad_width=[(tile_radius, tile_radius),
+                                       (tile_radius, tile_radius),
+                                       (0,0)],
                             mode='reflect')
         img_shape = img_padded.shape
 

@@ -13,8 +13,7 @@ def prep_triplets(triplets, cuda):
     	a, n, d = (a.cuda(), n.cuda(), d.cuda())
     return (a, n, d)
 
-def train_triplet_epoch(model, cuda, dataloader, optimizer, epoch, margin=1,
-    l2=0, print_every=100, t0=None):
+def train_triplet_epoch(model, cuda, dataloader, optimizer, epoch, margin=1, l2=0, print_every=100, t0=None):
     """
     Trains a model for one epoch using the provided dataloader.
     """
@@ -30,10 +29,10 @@ def train_triplet_epoch(model, cuda, dataloader, optimizer, epoch, margin=1,
         loss, l_n, l_d, l_nd = model.loss(p, n, d, margin=margin, l2=l2)
         loss.backward()
         optimizer.step()
-        sum_loss += loss.data[0]
-        sum_l_n += l_n.data[0]
-        sum_l_d += l_d.data[0]
-        sum_l_nd += l_nd.data[0]
+        sum_loss += loss.data#[0]
+        sum_l_n  += l_n.data#[0]
+        sum_l_d  += l_d.data#[0]
+        sum_l_nd += l_nd.data#[0]
         if (idx + 1) * dataloader.batch_size % print_every == 0:
             print_avg_loss = (sum_loss - print_sum_loss) / (
                 print_every / dataloader.batch_size)

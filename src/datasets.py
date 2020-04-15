@@ -9,8 +9,7 @@ from src.data_utils import clip_and_scale_image
 
 class TileTripletsDataset(Dataset):
 
-    def __init__(self, tile_dir, transform=None, n_triplets=None,
-        pairs_only=True):
+    def __init__(self, tile_dir, transform=None, n_triplets=None, pairs_only=True):
         self.tile_dir = tile_dir
         self.tile_files = glob.glob(os.path.join(self.tile_dir, '*'))
         self.transform = transform
@@ -19,7 +18,7 @@ class TileTripletsDataset(Dataset):
 
     def __len__(self):
         if self.n_triplets: return self.n_triplets
-        else: return len(self.tile_files) // 3
+        else: return len(self.tile_files)
 
     def __getitem__(self, idx):
         a = np.load(os.path.join(self.tile_dir, '{}anchor.npy'.format(idx)))
@@ -30,6 +29,7 @@ class TileTripletsDataset(Dataset):
             d = np.load(os.path.join(self.tile_dir, '{}{}.npy'.format(d_idx, name)))
         else:
             d = np.load(os.path.join(self.tile_dir, '{}distant.npy'.format(idx)))
+
         a = np.moveaxis(a, -1, 0)
         n = np.moveaxis(n, -1, 0)
         d = np.moveaxis(d, -1, 0)
@@ -40,7 +40,6 @@ class TileTripletsDataset(Dataset):
 
 
 ### TRANSFORMS ###
-
 class GetBands(object):
     """
     Gets the first X bands of the tile triplet.
@@ -110,11 +109,8 @@ class ToFloatTensor(object):
         return sample
 
 ### TRANSFORMS ###
-
-
-def triplet_dataloader(img_type, tile_dir, bands=4, augment=True,
-    batch_size=4, shuffle=True, num_workers=4, n_triplets=None,
-    pairs_only=True):
+def triplet_dataloader(img_type, tile_dir, bands=4, augment=True, batch_size=4, shuffle=True, num_workers=4,
+                       n_triplets=None, pairs_only=True):
     """
     Returns a DataLoader with either NAIP (RGB/IR), RGB, or Landsat tiles.
     Turn shuffle to False for producing embeddings that correspond to original
@@ -122,15 +118,35 @@ def triplet_dataloader(img_type, tile_dir, bands=4, augment=True,
     """
     assert img_type in ['landsat', 'rgb', 'naip']
     transform_list = []
-    if img_type in ['landsat', 'naip']: transform_list.append(GetBands(bands))
+
+    if img_type in ['landsat', 'naip']:
+        transform_list.append(GetBands(bands))
     transform_list.append(ClipAndScale(img_type))
-    if augment: transform_list.append(RandomFlipAndRotate())
+
+    if augment:
+        transform_list.append(RandomFlipAndRotate())
     transform_list.append(ToFloatTensor())
-    transform = transforms.Compose(transform_list)
-    dataset = TileTripletsDataset(tile_dir, transform=transform,
-        n_triplets=n_triplets, pairs_only=pairs_only)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
-        num_workers=num_workers)
+
+    transform  = transforms.Compose(transform_list)
+    dataset    = TileTripletsDataset(tile_dir,
+                                     transform=transform,
+                                     n_triplets=n_triplets,
+                                     pairs_only=pairs_only)
+    dataloader = DataLoader(dataset,
+                            batch_size=batch_size,
+                            shuffle=shuffle,
+                            num_workers=num_workers)
+
     return dataloader
+
+
+
+
+
+
+
+
+
+
 
     
